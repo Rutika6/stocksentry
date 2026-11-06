@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Orders{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div><p class="eyebrow">Procurement</p><h1>Restock orders</h1></div>
+  <div class="actions"><a class="btn" href="{{ url_for('restock') }}">{{ icon('cart') }} Restock list</a></div>
+</header>
+
+{% if not orders %}
+<section class="card empty">
+  <div class="empty-ico">{{ icon('clipboard', 36) }}</div>
+  <h2>No orders yet</h2>
+  <p class="muted">Open the restock list and press <b>Create order</b> on a supplier. When the goods arrive, mark the order received and stock updates automatically.</p>
+  <a class="btn primary" href="{{ url_for('restock') }}">Go to restock list</a>
+</section>
+{% endif %}
+
+{% for o in orders %}
+<section class="card table-card order">
+  <div class="card-head">
+    <div class="order-title">
+      <h3>Order #{{ o.id }} · {{ o.supplier or 'No supplier' }}</h3>
+      <span class="pill {{ o.status }}">{{ o.status|capitalize }}</span>
+    </div>
+    <div class="head-right">
+      <small>by {{ o.created_by }} · {{ o.created_at|ago }}{% if o.closed_at %} · closed by {{ o.closed_by }} {{ o.closed_at|ago }}{% endif %}</small>
+      {% if o.status == 'ordered' %}
+      <form method="post" action="{{ url_for('receive_order', oid=o.id) }}" data-confirm="Mark order #{{ o.id }} as received and add the stock?">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm primary" type="submit">{{ icon('check', 16) }} Mark received</button></form>
+      <form method="post" action="{{ url_for('cancel_order', oid=o.id) }}" data-confirm="Cancel order #{{ o.id }}?">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm" type="submit">Cancel</button></form>
+      {% endif %}
+    </div>
+  </div>
+  <div class="table-scroll">
+  <table class="tbl compact">
+    <thead><tr><th>Product</th><th class="num">Quantity</th><th class="num">Unit price</th><th class="num">Line total</th></tr></thead>
+    <tbody>
+      {% for i in o['items'] %}
+      <tr><td><b>{{ i.product_name }}</b></td><td class="num mono">{{ i.qty }} <small>{{ i.unit }}</small></td>
+        <td class="num mono">{{ i.unit_price|money }}</td><td class="num mono">{{ (i.qty * i.unit_price)|money }}</td></tr>
+      {% endfor %}
+      <tr class="total-row"><td colspan="3" class="num">Order total</td><td class="num mono strong">{{ o.total|money }}</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

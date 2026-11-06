@@ -1,0 +1,45 @@
+{% from "_icons.html" import icon %}<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create account · StockSentry</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>try{var t=localStorage.getItem('ss-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body class="login-body">
+  <div class="login-art">
+    <div class="radar"><i></i><i></i><i></i><span class="sweep"></span>
+      <b class="dot d1"></b><b class="dot d2 warn"></b><b class="dot d3 bad"></b><b class="dot d4"></b>
+    </div>
+    <div class="login-copy">
+      <h2>Never run out<br>of what matters.</h2>
+      <p>StockSentry watches your supplies, flags what is running low, and builds your restocking list in one click.</p>
+      <ul class="ticks">
+        <li>{{ icon('check', 16) }} Live low-stock flags</li>
+        <li>{{ icon('check', 16) }} One-click restock lists &amp; CSV export</li>
+        <li>{{ icon('check', 16) }} Full activity history</li>
+      </ul>
+    </div>
+  </div>
+  <div class="login-panel">
+    <form method="post" class="login-card">
+      <a class="brand" href="#"><span class="brand-mark">{{ icon('shield', 20) }}</span><span class="brand-text">Stock<b>Sentry</b></span></a>
+      <h1>Create your account</h1>
+      <p class="muted">Join your team on StockSentry. New accounts start with read-only access.</p>
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+      {% endwith %}
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label class="field"><span>Username</span><input name="username" autocomplete="username" required minlength="3" maxlength="30" pattern="[A-Za-z0-9_.\-]+" autofocus></label>
+      <label class="field"><span>Password <em>(min 8 characters)</em></span><input name="password" type="password" autocomplete="new-password" required minlength="8"></label>
+      <label class="field"><span>Confirm password</span><input name="confirm" type="password" autocomplete="new-password" required minlength="8"></label>
+      <button class="btn primary block lg" type="submit">Create account</button>
+      <p class="hint">Already have an account? <a class="link" href="{{ url_for('login') }}">Sign in</a></p>
+    </form>
+  </div>
+</body>
+</html>

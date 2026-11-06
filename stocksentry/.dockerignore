@@ -1,0 +1,9 @@
+.git
+.env
+__pycache__
+*.pyc
+data/*.db
+venv
+.venv
+*.md
+screenshots

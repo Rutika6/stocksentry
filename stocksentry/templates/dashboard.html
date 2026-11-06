@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <p class="eyebrow">Overview</p>
+    <h1>Dashboard</h1>
+  </div>
+  <div class="actions">
+    {% if stats.total == 0 and can('edit') %}
+    <form method="post" action="{{ url_for('seed') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn" type="submit">{{ icon('sparkles') }} Load demo data</button></form>
+    {% endif %}
+    <a class="btn" href="{{ url_for('restock') }}">{{ icon('cart') }} Restock list</a>
+    {% if can('edit') %}<a class="btn primary" href="{{ url_for('inventory') }}?new=1">{{ icon('plus') }} Add product</a>{% endif %}
+  </div>
+</header>
+
+{% if stats.total == 0 %}
+<section class="card empty">
+  <div class="empty-ico">{{ icon('box', 36) }}</div>
+  <h2>No products yet</h2>
+  <p class="muted">{% if can('edit') %}Add your first product, import a CSV, or load demo data to see StockSentry in action.{% else %}Ask a manager or admin to add products.{% endif %}</p>
+</section>
+{% else %}
+
+{% if stats.low + stats.out > 0 %}
+<section class="banner {{ 'bad' if stats.out else 'warn' }}">
+  <span class="banner-ico">{{ icon('alert', 20) }}</span>
+  <div><b>{{ stats.out + stats.low }} item{{ 's' if stats.out + stats.low != 1 }} need restocking</b>
+    <span>{{ stats.out }} out of stock · {{ stats.low }} running low · estimated restock cost {{ stats.restock_cost|money }}</span></div>
+  <div class="banner-actions">
+    {% if telegram_on and can('edit') %}
+    <form method="post" action="{{ url_for('send_alerts') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn sm" type="submit">{{ icon('bell', 16) }} Send alert</button></form>{% endif %}
+    <a class="btn sm" href="{{ url_for('restock') }}">View list</a>
+  </div>
+</section>
+{% endif %}
+
+<section class="kpis">
+  <div class="kpi"><span class="kpi-label">Total products</span><span class="kpi-val" data-count="{{ stats.total }}">{{ stats.total }}</span><span class="kpi-sub">in {{ cats|length }} categories</span></div>
+  <div class="kpi warn"><span class="kpi-label">Low stock</span><span class="kpi-val" data-count="{{ stats.low }}">{{ stats.low }}</span><span class="kpi-sub">at or below minimum</span></div>
+  <div class="kpi bad"><span class="kpi-label">Out of stock</span><span class="kpi-val" data-count="{{ stats.out }}">{{ stats.out }}</span><span class="kpi-sub">need urgent order</span></div>
+  <div class="kpi"><span class="kpi-label">Inventory value</span><span class="kpi-val">{{ stats.value|money }}</span><span class="kpi-sub">at current prices</span></div>
+</section>
+
+<section class="grid-3">
+  <article class="card health">
+    <h3>Stock health</h3>
+    <div class="donut-wrap">
+      <canvas id="donut" width="220" height="220" aria-label="Stock status chart"></canvas>
+      <div class="donut-center"><b>{{ health }}%</b><span>healthy</span></div>
+    </div>
+    <ul class="legend">
+      <li><i class="d ok"></i> In stock <b>{{ stats.ok }}</b></li>
+      <li><i class="d warn"></i> Low <b>{{ stats.low }}</b></li>
+      <li><i class="d bad"></i> Out <b>{{ stats.out }}</b></li>
+    </ul>
+  </article>
+
+  <article class="card span2">
+    <h3>Status by category</h3>
+    <div class="bars">
+      {% for name, c in cats|dictsort %}
+      {% set tot = c.ok + c.low + c.out %}
+      <div class="bar-row">
+        <span class="bar-name">{{ name }}</span>
+        <div class="stack" title="{{ c.ok }} ok · {{ c.low }} low · {{ c.out }} out">
+          {% if c.ok %}<i class="ok" style="width:{{ c.ok / tot * 100 }}%"></i>{% endif %}
+          {% if c.low %}<i class="warn" style="width:{{ c.low / tot * 100 }}%"></i>{% endif %}
+          {% if c.out %}<i class="bad" style="width:{{ c.out / tot * 100 }}%"></i>{% endif %}
+        </div>
+        <span class="bar-num">{{ tot }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="grid-2">
+  <article class="card">
+    <div class="card-head"><h3>Needs attention</h3><a class="link" href="{{ url_for('restock') }}">See all</a></div>
+    {% if critical %}
+    <ul class="list">
+      {% for p in critical %}
+      <li>
+        <span class="pill {{ p.status }}">{{ 'Out' if p.status == 'out' else 'Low' }}</span>
+        <div class="grow"><b>{{ p.name }}</b><small>{{ p.category }}{% if p.supplier %} · {{ p.supplier }}{% endif %}</small></div>
+        <div class="right"><b class="mono">{{ p.quantity }}</b><small>min {{ p.min_level }}</small></div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted pad">Everything is well stocked. Nice work.</p>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <div class="card-head"><h3>Recent activity</h3><a class="link" href="{{ url_for('history') }}">See all</a></div>
+    <ul class="list">
+      {% for m in recent %}
+      <li>
+        <span class="chg {{ 'up' if m.change > 0 else ('down' if m.change < 0 else '') }}">{{ '+' if m.change > 0 }}{{ m.change }}</span>
+        <div class="grow"><b>{{ m.product_name }}</b><small>{{ m.reason }} · by {{ m.user }}</small></div>
+        <small class="right">{{ m.created_at|ago }}</small>
+      </li>
+      {% else %}<li class="muted">No activity yet.</li>{% endfor %}
+    </ul>
+  </article>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if stats.total %}
+<script>
+  window.SS_DONUT = {ok: {{ stats.ok }}, low: {{ stats.low }}, out: {{ stats.out }}};
+</script>
+{% endif %}
+{% endblock %}

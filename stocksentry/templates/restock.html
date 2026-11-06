@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Restock list{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div><p class="eyebrow">Generated {{ generated }}</p><h1>Restock list</h1></div>
+  <div class="actions no-print">
+    {% if telegram_on and items and can('edit') %}
+    <form method="post" action="{{ url_for('send_alerts') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn" type="submit">{{ icon('bell') }} Send alert</button></form>{% endif %}
+    <button class="btn" type="button" onclick="window.print()">{{ icon('printer') }} Print</button>
+    {% if items %}<a class="btn primary" href="{{ url_for('restock_csv') }}">{{ icon('download') }} Export CSV</a>{% endif %}
+  </div>
+</header>
+
+{% if not items %}
+<section class="card empty">
+  <div class="empty-ico ok">{{ icon('check', 36) }}</div>
+  <h2>All stocked up</h2>
+  <p class="muted">No product is at or below its minimum level right now.</p>
+</section>
+{% else %}
+<section class="kpis three">
+  <div class="kpi"><span class="kpi-label">Items to order</span><span class="kpi-val">{{ items|length }}</span><span class="kpi-sub">across {{ groups|length }} supplier{{ 's' if groups|length != 1 }}</span></div>
+  <div class="kpi bad"><span class="kpi-label">Out of stock</span><span class="kpi-val">{{ items|selectattr('status','equalto','out')|list|length }}</span><span class="kpi-sub">order first</span></div>
+  <div class="kpi"><span class="kpi-label">Estimated cost</span><span class="kpi-val">{{ total|money }}</span><span class="kpi-sub">to reach 2× minimum level</span></div>
+</section>
+
+{% for supplier, rows in groups.items() %}
+<section class="card table-card group">
+  <div class="card-head"><h3>{{ supplier }}</h3><div class="head-right"><span class="muted">{{ rows|length }} item{{ 's' if rows|length != 1 }} · {{ rows|sum(attribute='cost')|money }}</span>
+      {% if can('orders') and rows[0].supplier and rows|rejectattr('on_order')|list %}
+      <form method="post" action="{{ url_for('create_order') }}" class="no-print"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="supplier" value="{{ rows[0].supplier }}">
+        <button class="btn sm primary" type="submit">{{ icon('clipboard', 16) }} Create order</button></form>{% endif %}</div></div>
+  <div class="table-scroll">
+  <table class="tbl">
+    <thead><tr><th>Product</th><th>Status</th><th class="num">Have</th><th class="num">Min</th><th class="num">Order</th><th class="num">Unit price</th><th class="num">Cost</th></tr></thead>
+    <tbody>
+      {% for p in rows %}
+      <tr>
+        <td><div class="prod"><b>{{ p.name }}</b><small>{{ p.sku or '—' }} · {{ p.category }}</small></div></td>
+        <td><span class="pill {{ p.status }}">{{ 'Out' if p.status == 'out' else 'Low' }}</span>{% if p.on_order %} <span class="pill ordered">On order</span>{% endif %}</td>
+        <td class="num mono">{{ p.quantity }}</td>
+        <td class="num mono">{{ p.min_level }}</td>
+        <td class="num mono strong">{{ p.reorder }} <small>{{ p.unit }}</small></td>
+        <td class="num mono">{{ p.price|money }}</td>
+        <td class="num mono">{{ p.cost|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}

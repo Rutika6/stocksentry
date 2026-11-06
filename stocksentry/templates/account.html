@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}My account{% endblock %}
+{% block content %}
+<header class="page-head"><div><p class="eyebrow">Profile</p><h1>My account</h1></div></header>
+<section class="grid-2">
+  <article class="card profile">
+    <div class="profile-top">
+      <span class="avatar xl">{{ user.username[0]|upper }}</span>
+      <div><h2>{{ user.username }}</h2><span class="role {{ user.role }}">{{ user.role }}</span></div>
+    </div>
+    <p class="muted">{{ role_info[user.role] }}.</p>
+    <dl class="facts"><div><dt>Member since</dt><dd>{{ user.created_at[:10] }}</dd></div>
+      <div><dt>Last sign-in</dt><dd>{{ user.last_login|ago if user.last_login else 'this session' }}</dd></div></dl>
+    <div class="card-head"><h3>My recent activity</h3></div>
+    <ul class="list">
+      {% for m in mine %}<li><span class="chg {{ 'up' if m.change > 0 else ('down' if m.change < 0 else '') }}">{{ '+' if m.change > 0 }}{{ m.change }}</span>
+        <div class="grow"><b>{{ m.product_name }}</b><small>{{ m.reason }}</small></div><small class="right">{{ m.created_at|ago }}</small></li>
+      {% else %}<li class="muted">You haven't changed any stock yet.</li>{% endfor %}
+    </ul>
+  </article>
+  <article class="card">
+    <div class="card-head"><h3>Change password</h3></div>
+    <form method="post" class="stack-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label class="field"><span>Current password</span><input name="current" type="password" required autocomplete="current-password"></label>
+      <label class="field"><span>New password <em>(min 8 characters)</em></span><input name="new" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label class="field"><span>Confirm new password</span><input name="confirm" type="password" required minlength="8" autocomplete="new-password"></label>
+      <button class="btn primary" type="submit">{{ icon('key', 16) }} Update password</button>
+    </form>
+  </article>
+</section>
+{% endblock %}

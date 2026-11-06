@@ -1,0 +1,56 @@
+{% from "_icons.html" import icon %}<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}StockSentry{% endblock %} · StockSentry</title>
+  <meta name="csrf-token" content="{{ csrf }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2334d399'/%3E%3Cpath d='M9 16l5 5 9-10' stroke='%23062' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>try{var t=localStorage.getItem('ss-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('dashboard') }}">
+      <span class="brand-mark">{{ icon('shield', 20) }}</span>
+      <span class="brand-text">Stock<b>Sentry</b></span>
+    </a>
+    <nav class="nav">
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if page=='dashboard' }}">{{ icon('grid') }}<span>Dashboard</span></a>
+      <a href="{{ url_for('inventory') }}" class="{{ 'active' if page=='inventory' }}">{{ icon('box') }}<span>Inventory</span></a>
+      <a href="{{ url_for('restock') }}" class="{{ 'active' if page=='restock' }}">{{ icon('cart') }}<span>Restock list</span></a>
+      {% if can('orders') %}<a href="{{ url_for('orders') }}" class="{{ 'active' if page=='orders' }}">{{ icon('clipboard') }}<span>Orders</span></a>{% endif %}
+      <a href="{{ url_for('history') }}" class="{{ 'active' if page=='history' }}">{{ icon('history') }}<span>Activity</span></a>
+      {% if can('users') %}<a href="{{ url_for('users') }}" class="{{ 'active' if page=='users' }}">{{ icon('users') }}<span>Team</span></a>{% endif %}
+    </nav>
+    <div class="side-foot">
+      <button class="btn ghost block" id="themeBtn" type="button" aria-label="Toggle theme">
+        <span class="only-dark">{{ icon('sun') }} Light mode</span><span class="only-light">{{ icon('moon') }} Dark mode</span>
+      </button>
+      <a class="me" href="{{ url_for('account') }}" title="My account">
+        <span class="avatar">{{ user.username[0]|upper }}</span>
+        <span class="me-text"><b>{{ user.username }}</b><span class="role {{ user.role }}">{{ user.role }}</span></span>
+      </a>
+      <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn ghost block" type="submit">{{ icon('logout') }} Sign out</button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="main">
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% if msgs %}<div class="flashes">{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}</div>{% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+{% block scripts %}{% endblock %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

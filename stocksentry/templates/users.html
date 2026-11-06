@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Team{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div><p class="eyebrow">{{ rows|length }} member{{ 's' if rows|length != 1 }}</p><h1>Team</h1></div>
+  <div class="actions">
+    <form method="post" action="{{ url_for('demo_team') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn" type="submit" title="Creates manager1, staff1, viewer1 (password {{ demo_password }})">{{ icon('sparkles') }} Add demo team</button></form>
+    <button class="btn primary" type="button" data-open="userModal">{{ icon('plus') }} Add user</button>
+  </div>
+</header>
+
+<section class="card table-card">
+  <div class="table-scroll">
+  <table class="tbl">
+    <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Last sign-in</th><th class="num">Actions</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    {% set me = r.id == user.id %}
+    <tr>
+      <td><div class="who-chip big"><i class="avatar">{{ r.username[0]|upper }}</i><div class="prod"><b>{{ r.username }}{% if me %} <small>(you)</small>{% endif %}</b><small>joined {{ r.created_at[:10] }}</small></div></div></td>
+      <td>
+        <form method="post" action="{{ url_for('set_role', uid=r.id) }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <select name="role" class="role-select {{ r.role }}" data-autosubmit {{ 'disabled' if me }}>
+            {% for ro in roles %}<option value="{{ ro }}" {{ 'selected' if ro == r.role }}>{{ ro|capitalize }}</option>{% endfor %}
+          </select>
+        </form>
+      </td>
+      <td><span class="pill {{ 'ok' if r.active else 'out' }}">{{ 'Active' if r.active else 'Disabled' }}</span></td>
+      <td class="muted">{{ r.last_login|ago if r.last_login else 'never' }}</td>
+      <td class="num">
+        <div class="row-actions">
+          <button class="icon-btn" type="button" data-open="pwModal" data-pw-action="{{ url_for('reset_password', uid=r.id) }}" data-pw-user="{{ r.username }}" aria-label="Reset password for {{ r.username }}">{{ icon('key', 16) }}</button>
+          {% if not me %}
+          <form method="post" action="{{ url_for('toggle_user', uid=r.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+            <button class="icon-btn" type="submit" aria-label="{{ 'Disable' if r.active else 'Enable' }} {{ r.username }}" title="{{ 'Disable' if r.active else 'Enable' }}">{{ icon('power', 16) }}</button></form>
+          <form method="post" action="{{ url_for('delete_user', uid=r.id) }}" data-confirm="Delete user {{ r.username }}?">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><button class="icon-btn danger" type="submit" aria-label="Delete {{ r.username }}">{{ icon('trash', 16) }}</button></form>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h3>Roles &amp; permissions</h3></div>
+  <div class="table-scroll">
+  <table class="tbl matrix">
+    <thead><tr><th>Can…</th><th>Admin</th><th>Manager</th><th>Staff</th><th>Viewer</th></tr></thead>
+    <tbody>
+      {% set Y = icon('check', 16) %}
+      {% for label, a, m, s, v in [
+        ('View dashboard, inventory, activity, restock list', 1,1,1,1),
+        ('Use stock (decrease quantity)', 1,1,1,0),
+        ('Add stock, add / edit products, import CSV', 1,1,0,0),
+        ('Create and receive restock orders', 1,1,0,0),
+        ('Delete products', 1,0,0,0),
+        ('Manage team members and roles', 1,0,0,0)] %}
+      <tr><td>{{ label }}</td>{% for x in [a,m,s,v] %}<td class="mark">{% if x %}<span class="yes">{{ Y }}</span>{% else %}<span class="no">—</span>{% endif %}</td>{% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<div class="modal" id="userModal" role="dialog" aria-modal="true" aria-labelledby="userModalTitle" hidden>
+  <div class="modal-box">
+    <div class="modal-head"><h2 id="userModalTitle">Add user</h2><button class="icon-btn" type="button" data-close aria-label="Close">{{ icon('x', 18) }}</button></div>
+    <form method="post" action="{{ url_for('add_user') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="form-grid">
+        <label class="field"><span>Username</span><input name="username" required minlength="3" maxlength="30" pattern="[A-Za-z0-9_.\-]+" autocomplete="off"></label>
+        <label class="field"><span>Role</span>
+          <select name="role" class="full">{% for ro in roles %}<option value="{{ ro }}" {{ 'selected' if ro == 'staff' }}>{{ ro|capitalize }}</option>{% endfor %}</select></label>
+        <label class="field span2"><span>Password <em>(min 8 characters)</em></span><input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+      </div>
+      <div class="modal-foot"><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Create user</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle" hidden>
+  <div class="modal-box">
+    <div class="modal-head"><h2 id="pwTitle">Reset password</h2><button class="icon-btn" type="button" data-close aria-label="Close">{{ icon('x', 18) }}</button></div>
+    <form method="post" id="pwForm" action="#">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label class="field"><span>New password for <b id="pwUser"></b> <em>(min 8 characters)</em></span><input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+      <div class="modal-foot"><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Save password</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

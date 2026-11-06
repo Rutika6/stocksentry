@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Activity{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div><p class="eyebrow">Audit trail</p><h1>Activity</h1></div>
+</header>
+<section class="card table-card">
+  {% if rows %}
+  <div class="table-scroll">
+  <table class="tbl">
+    <thead><tr><th>When</th><th>Product</th><th class="num">Change</th><th class="num">Stock after</th><th>Reason</th><th>By</th></tr></thead>
+    <tbody>
+      {% for m in rows %}
+      <tr>
+        <td><div class="prod"><b>{{ m.created_at|ago }}</b><small>{{ m.created_at }}</small></div></td>
+        <td><b>{{ m.product_name }}</b></td>
+        <td class="num"><span class="chg {{ 'up' if m.change > 0 else ('down' if m.change < 0 else '') }}">{{ '+' if m.change > 0 }}{{ m.change }}</span></td>
+        <td class="num mono">{{ m.qty_after }}</td>
+        <td class="muted">{{ m.reason }}</td>
+        <td><span class="who-chip"><i class="avatar xs">{{ m.user[0]|upper }}</i>{{ m.user }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty"><div class="empty-ico">{{ icon('history', 36) }}</div><h2>No activity yet</h2>
+    <p class="muted">Every stock change you make shows up here.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    image: stocksentry:latest
+    container_name: stocksentry
+    user: "0:0"
+    ports:
+      - "80:5000"
+    env_file:
+      - .env
+    volumes:
+      - stocksentry-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  stocksentry-data:

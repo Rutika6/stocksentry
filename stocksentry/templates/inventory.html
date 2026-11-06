@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Inventory{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div><p class="eyebrow">{{ products|length }} products</p><h1>Inventory</h1></div>
+  <div class="actions">
+    {% if can('edit') %}<form method="post" action="{{ url_for('import_csv') }}" enctype="multipart/form-data" id="importForm">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="file" name="file" id="importFile" accept=".csv" hidden>
+      <button class="btn" type="button" id="importBtn">{{ icon('upload') }} Import CSV</button>
+    </form>{% endif %}
+    <a class="btn" href="{{ url_for('inventory_csv') }}">{{ icon('download') }} Export</a>
+    {% if can('edit') %}<button class="btn primary" type="button" data-open="productModal" id="newBtn">{{ icon('plus') }} Add product</button>{% endif %}
+  </div>
+</header>
+
+{% if not products %}
+<section class="card empty">
+  <div class="empty-ico">{{ icon('box', 36) }}</div>
+  <h2>Your inventory is empty</h2>
+  <p class="muted">Add a product, import a CSV (columns: name, sku, category, supplier, unit, quantity, min_level, price), or load demo data.</p>
+  {% if can('edit') %}<form method="post" action="{{ url_for('seed') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="btn" type="submit">{{ icon('sparkles') }} Load demo data</button></form>{% endif %}
+</section>
+{% else %}
+<section class="toolbar">
+  <label class="search">{{ icon('search', 16) }}
+    <input id="q" type="search" placeholder="Search name, SKU, supplier…  ( press / )" autocomplete="off">
+  </label>
+  <div class="chips" id="statusChips">
+    <button class="chip active" data-status="all" type="button">All</button>
+    <button class="chip" data-status="ok" type="button"><i class="d ok"></i>In stock</button>
+    <button class="chip" data-status="low" type="button"><i class="d warn"></i>Low</button>
+    <button class="chip" data-status="out" type="button"><i class="d bad"></i>Out</button>
+  </div>
+  <select id="catFilter" aria-label="Category">
+    <option value="">All categories</option>
+    {% for c in categories %}<option>{{ c }}</option>{% endfor %}
+  </select>
+</section>
+
+<section class="card table-card">
+  <div class="table-scroll">
+  <table class="tbl" id="tbl">
+    <thead><tr>
+      <th data-sort="name">Product</th>
+      <th data-sort="category">Category</th>
+      <th data-sort="status">Status</th>
+      <th data-sort="qty" class="num">Stock</th>
+      <th data-sort="min" class="num">Min</th>
+      <th data-sort="price" class="num">Price</th>
+      {% if can('edit') %}<th class="num">Actions</th>{% endif %}
+    </tr></thead>
+    <tbody>
+      {% for p in products %}
+      <tr data-id="{{ p.id }}" data-name="{{ p.name|lower }} {{ (p.sku or '')|lower }} {{ p.supplier|lower }}"
+          data-status="{{ p.status }}" data-category="{{ p.category }}"
+          data-sortname="{{ p.name|lower }}" data-sortcategory="{{ p.category|lower }}"
+          data-sortstatus="{{ {'out':0,'low':1,'ok':2}[p.status] }}" data-sortqty="{{ p.quantity }}"
+          data-sortmin="{{ p.min_level }}" data-sortprice="{{ p.price }}">
+        <td><div class="prod"><b>{{ p.name }}</b><small>{{ p.sku or '—' }}{% if p.supplier %} · {{ p.supplier }}{% endif %}</small></div></td>
+        <td><span class="tag">{{ p.category }}</span></td>
+        <td><span class="pill {{ p.status }}" data-role="pill">{{ {'ok':'In stock','low':'Low','out':'Out'}[p.status] }}</span></td>
+        <td class="num">
+          <div class="qty">
+            {% if can('use') %}<button class="qbtn" type="button" data-delta="-1" aria-label="Decrease {{ p.name }}">{{ icon('minus', 14) }}</button>{% endif %}
+            <div class="qmid"><b class="mono" data-role="qty">{{ p.quantity }}</b><small>{{ p.unit }}</small>
+              <div class="meter"><i class="{{ p.status }}" style="width:{{ p.pct }}%" data-role="meter"></i></div></div>
+            {% if can('edit') %}<button class="qbtn" type="button" data-delta="1" aria-label="Increase {{ p.name }}">{{ icon('plus', 14) }}</button>{% endif %}
+          </div>
+        </td>
+        <td class="num mono">{{ p.min_level }}</td>
+        <td class="num mono">{{ p.price|money }}</td>
+        {% if can('edit') %}<td class="num">
+          <div class="row-actions">
+            <button class="icon-btn" type="button" data-edit='{{ {"id": p.id, "name": p.name, "sku": p.sku or "", "category": p.category, "supplier": p.supplier, "unit": p.unit, "quantity": p.quantity, "min_level": p.min_level, "price": p.price}|tojson|forceescape }}' aria-label="Edit {{ p.name }}">{{ icon('edit', 16) }}</button>
+            {% if can('delete') %}<form method="post" action="{{ url_for('delete_product', pid=p.id) }}" data-confirm="Delete {{ p.name }}?">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <button class="icon-btn danger" type="submit" aria-label="Delete {{ p.name }}">{{ icon('trash', 16) }}</button>
+            </form>{% endif %}
+          </div>
+        </td>{% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted pad hidden" id="noMatch">No products match your filters.</p>
+</section>
+{% endif %}
+
+{% if can('edit') %}<div class="modal" id="productModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+  <div class="modal-box">
+    <div class="modal-head"><h2 id="modalTitle">Add product</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Close">{{ icon('x', 18) }}</button></div>
+    <form method="post" action="{{ url_for('add_product') }}" id="productForm" data-add="{{ url_for('add_product') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="form-grid">
+        <label class="field span2"><span>Product name *</span><input name="name" required maxlength="120"></label>
+        <label class="field"><span>SKU</span><input name="sku" maxlength="40" placeholder="optional, unique"></label>
+        <label class="field"><span>Category</span><input name="category" list="cats" maxlength="60" placeholder="e.g. Stationery">
+          <datalist id="cats">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist></label>
+        <label class="field"><span>Current quantity</span><input name="quantity" type="number" min="0" value="0" required></label>
+        <label class="field"><span>Minimum level <em>(alert at or below)</em></span><input name="min_level" type="number" min="0" value="5" required></label>
+        <label class="field"><span>Unit</span><input name="unit" maxlength="20" value="pcs"></label>
+        <label class="field"><span>Price per unit (₹)</span><input name="price" type="number" min="0" step="0.01" value="0"></label>
+        <label class="field span2"><span>Supplier</span><input name="supplier" list="sups" maxlength="80" placeholder="optional">
+          <datalist id="sups">{% for s in suppliers %}<option value="{{ s }}">{% endfor %}</datalist></label>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" type="button" data-close>Cancel</button>
+        <button class="btn primary" type="submit" id="saveBtn">Save product</button>
+      </div>
+    </form>
+  </div>
+</div>{% endif %}
+{% endblock %}
